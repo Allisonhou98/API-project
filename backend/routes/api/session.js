@@ -22,37 +22,55 @@ router.post(
     '/',
     async (req, res, next) => {
       const { credential, password } = req.body;
-  
-      const user = await User.unscoped().findOne({
-        where: {
-          [Op.or]: {
-            username: credential,
-            email: credential
-          }
-        }
-      });
-  
-      if (!user || !bcrypt.compareSync(password, user.hashedPassword.toString())) {
-        const err = new Error('Login failed');
-        err.status = 401;
-        err.title = 'Login failed';
-        err.errors = { credential: 'Invalid credentials' };
-        return next(err);
+
+
+      // Validate request body
+      if (!credential || !password) {
+        return res.status(400).json({
+          message: 'Bad Request',
+          errors: {
+            credential: !credential ? 'Email or username is required' : undefined,
+            password: !password ? 'Password is required' : undefined,
+          },
+        });
       }
-  
-      const safeUser = {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        username: user.username,
-      };
-  
-      await setTokenCookie(res, safeUser);
-  
-      return res.json({
-        user: safeUser
-      });
+
+    
+      try {
+        const user = await User.unscoped().findOne({
+          where: {
+            [Op.or]: {
+              username: credential,
+              email: credential
+            }
+          }
+        });
+    
+        if (!user || !bcrypt.compareSync(password, user.hashedPassword.toString())) {
+          const err = new Error('Login failed');
+          err.status = 401;
+          err.title = 'Login failed';
+          err.errors = { credential: 'Invalid credentials' };
+          return next(err);
+        }
+    
+        const safeUser = {
+          id: user.id,
+          firstname: user.firstName,
+          lastname: user.lastName,
+          email: user.email,
+          username: user.username,
+        };
+    
+        await setTokenCookie(res, safeUser);
+    
+        return res.json({
+          user: safeUser
+        });
+      } catch (error) {
+        console.error('Error during login:', error);
+        return res.status(500).json({ message: 'Internal Server Error' });
+      }
     }
   );
 
