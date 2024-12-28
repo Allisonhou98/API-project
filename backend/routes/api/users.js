@@ -108,6 +108,7 @@ const validateSignup = [
   // backend/routes/api/users.js
 // ...
 
+/*
 // Sign up
 router.post(
     '/',
@@ -129,5 +130,6 @@ router.post(
         user: safeUser
       });
     }
-  );
+  );*/
+  
 module.exports = router;
