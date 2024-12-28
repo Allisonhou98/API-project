@@ -34,7 +34,7 @@ module.exports = {
         unique: true
       },
       hashpassword: {
-        type: Sequelize.STRING.binary ,
+        type: Sequelize.STRING.BINARY ,
         allowNull: false
       },
       createdAt: {
