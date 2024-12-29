@@ -19,21 +19,64 @@ const router = express.Router();
 router.post(
     '/',
     async (req, res) => {
-      const { email, password, username } = req.body;
-      const hashedPassword = bcrypt.hashSync(password);
-      const user = await User.create({ email, username, hashedPassword });
+      const { firstName, lastName, email, username, password } = req.body;
   
-      const safeUser = {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-      };
-  
-      await setTokenCookie(res, safeUser);
-  
-      return res.json({
-        user: safeUser
-      });
+        // Validate the request body
+      const errors = {};
+      if (!firstName) errors.firstName = 'First Name is required';
+      if (!lastName) errors.lastName = 'Last Name is required';
+      if (!email) errors.email = 'Email is required';
+      if (!username) errors.username = 'Username is required';
+      if (!password) errors.password = 'Password is required';
+
+      if (Object.keys(errors).length > 0) {
+        return res.status(400).json({
+          message: 'Bad Request',
+          errors,
+        });
+      }
+
+      try {
+
+        // Check if the user already exists
+        const existingUser = await User.findOne({
+          where: {
+            [User.sequelize.Op.or]: [{ email }, { username }],
+          },
+        });
+
+        if (existingUser) {
+          const duplicateErrors = {};
+          if (existingUser.email === email) duplicateErrors.email = 'User with that email already exists';
+          if (existingUser.username === username) duplicateErrors.username = 'User with that username already exists';
+
+          return res.status(500).json({
+            message: 'User already exists',
+            errors: duplicateErrors,
+          });
+        }
+
+
+        const hashedPassword = bcrypt.hashSync(password);
+        const user = await User.create({ firstName, lastName, email, username, hashpassword: hashedPassword });
+
+        const safeUser = {
+          id: user.id,
+          firstname: user.firstName,
+          lastname: user.lastName,
+          email: user.email,
+          username: user.username,
+        };
+    
+        await setTokenCookie(res, safeUser);
+    
+        return res.json({
+          user: safeUser
+        });
+      } catch (error) {
+        console.error('Error during sign up:', error);
+        return res.status(500).json({ message: 'Internal Server Error' });
+      }
     }
   );
 
@@ -65,6 +108,7 @@ const validateSignup = [
   // backend/routes/api/users.js
 // ...
 
+/*
 // Sign up
 router.post(
     '/',
@@ -86,5 +130,6 @@ router.post(
         user: safeUser
       });
     }
-  );
+  );*/
+  
 module.exports = router;
