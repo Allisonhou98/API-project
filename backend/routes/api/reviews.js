@@ -353,4 +353,92 @@ router.delete('/:id', restoreUser, async (req, res) => {
   }
 });
 
+
+// Create a Booking from a Spot based on the Spot's id
+router.post('/spots/:spotId/bookings', restoreUser, async (req, res) => {
+  const { spotId } = req.params;
+  const { startDate, endDate } = req.body;
+  const userId = req.user.id;
+
+  const errors = {};
+
+  // Validate request body
+  if (!startDate) errors.startDate = 'startDate is required';
+  if (!endDate) errors.endDate = 'endDate is required';
+  if (new Date(startDate) < new Date()) errors.startDate = 'startDate cannot be in the past';
+  if (new Date(endDate) <= new Date(startDate))
+    errors.endDate = 'endDate cannot be on or before startDate';
+
+  if (Object.keys(errors).length > 0) {
+    return res.status(400).json({
+      message: 'Bad Request',
+      errors,
+    });
+  }
+
+  try {
+    // Check if the spot exists
+    const spot = await Spot.findByPk(spotId);
+
+    if (!spot) {
+      return res.status(404).json({ message: "Spot couldn't be found" });
+    }
+
+    // Ensure the current user is not the owner of the spot
+    if (spot.ownerId === userId) {
+      return res.status(403).json({ message: 'Forbidden: Cannot book your own spot' });
+    }
+
+    // Check for booking conflicts
+    const conflictingBookings = await Booking.findAll({
+      where: {
+        spotId,
+        [Booking.sequelize.Op.or]: [
+          {
+            startDate: {
+              [Booking.sequelize.Op.between]: [startDate, endDate],
+            },
+          },
+          {
+            endDate: {
+              [Booking.sequelize.Op.between]: [startDate, endDate],
+            },
+          },
+          {
+            startDate: {
+              [Booking.sequelize.Op.lte]: startDate,
+            },
+            endDate: {
+              [Booking.sequelize.Op.gte]: endDate,
+            },
+          },
+        ],
+      },
+    });
+
+    if (conflictingBookings.length > 0) {
+      return res.status(403).json({
+        message: 'Sorry, this spot is already booked for the specified dates',
+        errors: {
+          startDate: 'Start date conflicts with an existing booking',
+          endDate: 'End date conflicts with an existing booking',
+        },
+      });
+    }
+
+    // Create the booking
+    const newBooking = await Booking.create({
+      spotId,
+      userId,
+      startDate,
+      endDate,
+    });
+
+    return res.status(201).json(newBooking);
+  } catch (error) {
+    console.error('Error creating booking:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
 module.exports = router;
