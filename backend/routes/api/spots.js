@@ -706,7 +706,7 @@ router.post('/:spotId/bookings', requireAuth, async (req, res) => {
         },
       });
       
-
+      console.log(conflictingBookings.length)
 
       if (conflictingBookings.length > 0) {
         let startDateConflict = false;
@@ -739,6 +739,7 @@ router.post('/:spotId/bookings', requireAuth, async (req, res) => {
         });
       
         const errors = {};
+        //errors.message = 'Sorry, this spot is already booked for the specified dates';
 
         if (startDateConflict) {
           console.log('hey')
