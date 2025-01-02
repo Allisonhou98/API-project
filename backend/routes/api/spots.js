@@ -645,6 +645,9 @@ router.post('/:spotId/bookings', requireAuth, async (req, res) => {
     const { startDate, endDate } = req.body;
     const userId = req.user.id;
   
+    let newstartDate = new Date(startDate).toISOString();
+    let newendDate = new Date(endDate).toISOString();
+
     const errors = {};
   
     // Validate dates
@@ -674,26 +677,81 @@ router.post('/:spotId/bookings', requireAuth, async (req, res) => {
       if (spot.ownerId === userId) {
         return res.status(403).json({ message: 'Forbidden: Cannot book your own spot' });
       }
-  
+      
+
       // Check for booking conflicts
       const conflictingBookings = await Booking.findAll({
         where: {
-          spotId
+          spotId,
+          [Op.or]: [
+            {
+              startDate: {
+                [Op.between]: [newstartDate, newendDate],
+              },
+            },
+            {
+              endDate: {
+                [Op.between]: [newstartDate, newendDate],
+              },
+            },
+            {
+              startDate: {
+                [Op.lte]: newstartDate,
+              },
+              endDate: {
+                [Op.gte]: newendDate,
+              },
+            },
+          ],
         },
       });
-  
-      console.log(conflictingBookings)
-      console.log('testing 2')
-      console.log(spotId)
-      console.log(startDate)
-      console.log(endDate)
+      
+
+
       if (conflictingBookings.length > 0) {
+        let startDateConflict = false;
+        let endDateConflict = false;
+        conflictingBookings.forEach((booking) => {
+          //console.log(booking.startDate)
+          console.log(booking.endDate)
+          console.log(newstartDate)
+          //console.log(newendDate)
+          console.log(newstartDate<=new Date(booking.endDate).toISOString())
+          if (
+            newstartDate >=  new Date(booking.startDate).toISOString() &&
+            newstartDate <= new Date(booking.endDate).toISOString()
+          ) {
+            startDateConflict = true;
+          }
+          if (
+            newendDate >= new Date(booking.startDate).toISOString() &&
+            newendDate <= new Date(booking.endDate).toISOString()
+          ) {
+            endDateConflict = true;
+          }
+          if (
+            newstartDate <= new Date(booking.startDate).toISOString()  &&
+            newendDate >= new Date(booking.endDate).toISOString()
+          ) {
+            startDateConflict = true;
+            endDateConflict = true;
+          }
+        });
+      
+        const errors = {};
+
+        if (startDateConflict) {
+          console.log('hey')
+          errors.startDate = 'Start date conflicts with an existing booking';
+        }
+        if (endDateConflict) {
+          errors.endDate = 'End date conflicts with an existing booking';
+        }
+      
         return res.status(403).json({
           message: 'Sorry, this spot is already booked for the specified dates',
-          errors: {
-            startDate: 'Start date conflicts with an existing booking',
-            endDate: 'End date conflicts with an existing booking',
-          },
+          errors,
+          title: 'Booking Conflict'
         });
       }
   
@@ -705,6 +763,7 @@ router.post('/:spotId/bookings', requireAuth, async (req, res) => {
         endDate,
       });
 
+      console.log(newBooking)
       // Respond with the newly created booking
       return res.status(201).json(newBooking);
     } catch (error) {

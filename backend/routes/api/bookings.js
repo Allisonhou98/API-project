@@ -2,6 +2,7 @@ const express = require('express');
 const { Booking, Spot, SpotImage } = require('../../db/models'); // Adjust the path based on your project structure
 const { requireAuth } = require('../../utils/auth'); // Middleware for authentication
 const router = express.Router();
+const { Op } = require('sequelize'); // For query filtering
 
 // Get all of the Current User's Bookings
 router.get('/current', requireAuth, async (req, res) => {
@@ -28,7 +29,7 @@ router.get('/current', requireAuth, async (req, res) => {
           include: [
             {
               model: SpotImage,
-              attributes: ['url'],
+              attributes: ['imageURL'],
               where: { previewImage: true },
               required: false, // Optional preview image
             },
@@ -41,7 +42,7 @@ router.get('/current', requireAuth, async (req, res) => {
     const formattedBookings = bookings.map((booking) => {
       const spot = booking.Spot;
       const previewImage =
-        spot && spot.SpotImages.length > 0 ? spot.SpotImages[0].url : null;
+        spot && spot.SpotImages.length > 0 ? spot.SpotImages[0].imageURL : null;
 
       return {
         id: booking.id,
@@ -74,60 +75,7 @@ router.get('/current', requireAuth, async (req, res) => {
   }
 });
 
-// Get all Bookings for a Spot based on the Spot's id
-router.get('/spots/:spotId/bookings', requireAuth, async (req, res) => {
-    const { spotId } = req.params;
-  
-    try {
-      // Check if the spot exists
-      const spot = await Spot.findByPk(spotId);
-  
-      if (!spot) {
-        return res.status(404).json({ message: "Spot couldn't be found" });
-      }
-  
-      // Check if the current user is the owner of the spot
-      const isOwner = spot.ownerId === req.user.id;
-  
-      const bookings = await Booking.findAll({
-        where: { spotId },
-        include: isOwner
-          ? [
-              {
-                model: User,
-                attributes: ['id', 'firstName', 'lastName'],
-              },
-            ]
-          : [],
-      });
-  
-      if (isOwner) {
-        return res.status(200).json({
-          Bookings: bookings.map((booking) => ({
-            User: booking.User,
-            id: booking.id,
-            spotId: booking.spotId,
-            userId: booking.userId,
-            startDate: booking.startDate,
-            endDate: booking.endDate,
-            createdAt: booking.createdAt,
-            updatedAt: booking.updatedAt,
-          })),
-        });
-      } else {
-        return res.status(200).json({
-          Bookings: bookings.map((booking) => ({
-            spotId: booking.spotId,
-            startDate: booking.startDate,
-            endDate: booking.endDate,
-          })),
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching bookings for spot:', error);
-      return res.status(500).json({ message: 'Internal Server Error' });
-    }
-  });
+
 
   // Edit a Booking
 router.put('/:id', requireAuth, async (req, res) => {
@@ -172,24 +120,24 @@ router.put('/:id', requireAuth, async (req, res) => {
       const conflictingBookings = await Booking.findAll({
         where: {
           spotId: booking.spotId,
-          id: { [Booking.sequelize.Op.ne]: booking.id }, // Exclude the current booking
-          [Booking.sequelize.Op.or]: [
+          id: { [Op.ne]: booking.id }, // Exclude the current booking
+          [Op.or]: [
             {
               startDate: {
-                [Booking.sequelize.Op.between]: [startDate, endDate],
+                [Op.between]: [startDate, endDate],
               },
             },
             {
               endDate: {
-                [Booking.sequelize.Op.between]: [startDate, endDate],
+                [Op.between]: [startDate, endDate],
               },
             },
             {
               startDate: {
-                [Booking.sequelize.Op.lte]: startDate,
+                [Op.lte]: startDate,
               },
               endDate: {
-                [Booking.sequelize.Op.gte]: endDate,
+                [Op.gte]: endDate,
               },
             },
           ],
