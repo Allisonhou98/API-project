@@ -1,14 +1,86 @@
 const express = require('express');
 const { Spot, Review, SpotImage } = require('../../db/models'); // Adjust the path based on your project structure
 const { restoreUser } = require('../../utils/auth'); // Middleware for authentication
+const { Op } = require('sequelize'); // For query filtering
 
 const router = express.Router();
 
 // Get all Spots
 router.get('/', async (req, res) => {
+
+    const {
+        page = 1,
+        size = 20,
+        minLat,
+        maxLat,
+        minLng,
+        maxLng,
+        minPrice,
+        maxPrice,
+      } = req.query;
+    
+      const errors = {};
+      const filters = {};
+    
+      // Validate and set page and size
+      const validatedPage = parseInt(page, 10);
+      const validatedSize = parseInt(size, 10);
+
+      if (isNaN(validatedPage) || validatedPage < 1) {
+        errors.page = 'Page must be greater than or equal to 1';
+      }
+      if (isNaN(validatedSize) || validatedSize < 1 || validatedSize > 20) {
+        errors.size = 'Size must be between 1 and 20';
+      }
+    
+    // Validate and set filters for latitude and longitude
+    if (minLat && isNaN(parseFloat(minLat))) {
+    errors.minLat = 'Minimum latitude is invalid';
+    } else if (minLat) {
+    filters.lat = { ...filters.lat, [Op.gte]: parseFloat(minLat) };
+    }
+    if (maxLat && isNaN(parseFloat(maxLat))) {
+    errors.maxLat = 'Maximum latitude is invalid';
+    } else if (maxLat) {
+    filters.lat = { ...filters.lat, [Op.lte]: parseFloat(maxLat) };
+    }
+    if (minLng && isNaN(parseFloat(minLng))) {
+    errors.minLng = 'Minimum longitude is invalid';
+    } else if (minLng) {
+    filters.lng = { ...filters.lng, [Op.gte]: parseFloat(minLng) };
+    }
+    if (maxLng && isNaN(parseFloat(maxLng))) {
+    errors.maxLng = 'Maximum longitude is invalid';
+    } else if (maxLng) {
+    filters.lng = { ...filters.lng, [Op.lte]: parseFloat(maxLng) };
+    }
+
+    // Validate and set filters for price
+    if (minPrice && (isNaN(parseFloat(minPrice)) || parseFloat(minPrice) < 0)) {
+    errors.minPrice = 'Minimum price must be greater than or equal to 0';
+    } else if (minPrice) {
+    filters.price = { ...filters.price, [Op.gte]: parseFloat(minPrice) };
+    }
+    if (maxPrice && (isNaN(parseFloat(maxPrice)) || parseFloat(maxPrice) < 0)) {
+    errors.maxPrice = 'Maximum price must be greater than or equal to 0';
+    } else if (maxPrice) {
+    filters.price = { ...filters.price, [Op.lte]: parseFloat(maxPrice) };
+    }
+
+    // If there are validation errors, respond with a 400 error
+    if (Object.keys(errors).length > 0) {
+    return res.status(400).json({
+        message: 'Bad Request',
+        errors,
+    });
+    }
+
     try {
       // Fetch all spots
       const spots = await Spot.findAll({
+        where: filters,
+        limit: validatedSize,
+        offset: (validatedPage - 1) * validatedSize,
         include: [
           {
             model: Review,
@@ -57,7 +129,11 @@ router.get('/', async (req, res) => {
       });
   
       // Respond with the transformed data
-      return res.status(200).json({ Spots: spotsWithDetails });
+      return res.status(200).json({
+        Spots: formattedSpots,
+        page: validatedPage,
+        size: validatedSize,
+      });
     } catch (error) {
       console.error('Error fetching spots:', error);
       return res.status(500).json({ message: 'Internal Server Error' });
