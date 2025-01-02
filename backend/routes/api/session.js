@@ -45,9 +45,9 @@ router.post(
             }
           }
         });
-    
-        if (!user || !bcrypt.compareSync(password, user.hashedPassword.toString())) {
-          const err = new Error('Login failed');
+        
+;        if (!user || !bcrypt.compareSync(password, user.hashpassword.toString())) {
+          const err = new Error('Invalid credentials');
           err.status = 401;
           err.title = 'Login failed';
           err.errors = { credential: 'Invalid credentials' };
@@ -56,8 +56,8 @@ router.post(
     
         const safeUser = {
           id: user.id,
-          firstname: user.firstName,
-          lastname: user.lastName,
+          firstName: user.firstName,
+          lastName: user.lastName,
           email: user.email,
           username: user.username,
         };
@@ -147,7 +147,7 @@ router.post(
       }
     });
 
-    if (!user || !bcrypt.compareSync(password, user.hashedPassword.toString())) {
+    if (!user || !bcrypt.compareSync(password, user.hashpassword.toString())) {
       const err = new Error('Login failed');
       err.status = 401;
       err.title = 'Login failed';

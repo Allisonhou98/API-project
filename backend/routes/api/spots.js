@@ -88,7 +88,7 @@ router.get('/', async (req, res) => {
           },
           {
             model: SpotImage,
-            attributes: ['url', 'previewImage'],
+            attributes: ['imageURL', 'previewImage'],
             where: { previewImage: true },
             required: false,
           },
@@ -96,7 +96,7 @@ router.get('/', async (req, res) => {
       });
   
       // Transform the spots data to include avgRating and previewImage
-      const spotsWithDetails = spots.map((spot) => {
+      const formattedSpots = spots.map((spot) => {
         // Calculate the average rating
         const avgRating =
           spot.Reviews.length > 0

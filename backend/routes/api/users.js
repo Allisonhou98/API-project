@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 
 const { setTokenCookie, requireAuth } = require('../../utils/auth');
 const { User } = require('../../db/models');
+const { Op } = require('sequelize'); // Import Sequelize Op
 
 // backend/routes/api/users.js
 // ...
@@ -38,39 +39,36 @@ router.post(
 
       try {
 
-        // Check if the user already exists
         const existingUser = await User.findOne({
           where: {
-            [User.sequelize.Op.or]: [{ email }, { username }],
+            [Op.or]: [{ email }, { username }],
           },
         });
-
+    
         if (existingUser) {
-          const duplicateErrors = {};
-          if (existingUser.email === email) duplicateErrors.email = 'User with that email already exists';
-          if (existingUser.username === username) duplicateErrors.username = 'User with that username already exists';
-
           return res.status(500).json({
             message: 'User already exists',
-            errors: duplicateErrors,
+            errors: {
+              email: existingUser.email === email ? 'User with that email already exists' : 'User with that email already exists',
+              username: existingUser.username === username ? 'User with that username already exists' : 'User with that username already exists',
+            },
           });
         }
-
 
         const hashedPassword = bcrypt.hashSync(password);
         const user = await User.create({ firstName, lastName, email, username, hashpassword: hashedPassword });
 
         const safeUser = {
           id: user.id,
-          firstname: user.firstName,
-          lastname: user.lastName,
+          firstName: user.firstName,
+          lastName: user.lastName,
           email: user.email,
           username: user.username,
         };
     
         await setTokenCookie(res, safeUser);
     
-        return res.json({
+        return res.status(201).json({
           user: safeUser
         });
       } catch (error) {
