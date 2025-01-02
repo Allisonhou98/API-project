@@ -1,11 +1,11 @@
 const express = require('express');
 const { Review, User, Spot, SpotImage, ReviewImage } = require('../../db/models'); // Adjust the path based on your project structure
-const { restoreUser } = require('../../utils/auth'); // Middleware for authentication
+const { requireAuth } = require('../../utils/auth'); // Middleware for authentication
 const router = express.Router();
 
 // Get all Reviews of the Current User
-router.get('/session/reviews', restoreUser, async (req, res) => {
-  const userId = req.user.id; // Assumes restoreUser middleware populates req.user.id
+router.get('/current', requireAuth, async (req, res) => {
+  const userId = req.user.id; // Assumes requireAuth middleware populates req.user.id
 
   try {
     // Fetch all reviews written by the current user
@@ -33,7 +33,7 @@ router.get('/session/reviews', restoreUser, async (req, res) => {
           include: [
             {
               model: SpotImage,
-              attributes: ['url'],
+              attributes: ['imageURL'],
               where: { previewImage: true },
               required: false, // Optional preview image
             },
@@ -41,7 +41,7 @@ router.get('/session/reviews', restoreUser, async (req, res) => {
         },
         {
           model: ReviewImage,
-          attributes: ['id', 'url'],
+          attributes: ['id', 'imageURL'],
         },
       ],
     });
@@ -87,101 +87,9 @@ router.get('/session/reviews', restoreUser, async (req, res) => {
 });
 
 
-// Get all Reviews by a Spot's id
-router.get('/:spotId/reviews', async (req, res) => {
-  const { spotId } = req.params;
-
-  try {
-    // Check if the spot exists
-    const spot = await Spot.findByPk(spotId);
-
-    if (!spot) {
-      return res.status(404).json({ message: "Spot couldn't be found" });
-    }
-
-    // Fetch all reviews for the spot
-    const reviews = await Review.findAll({
-      where: { spotId },
-      include: [
-        {
-          model: User,
-          attributes: ['id', 'firstName', 'lastName'],
-        },
-        {
-          model: ReviewImage,
-          attributes: ['id', 'url'],
-        },
-      ],
-    });
-
-    // Respond with the reviews
-    return res.status(200).json({ Reviews: reviews });
-  } catch (error) {
-    console.error('Error fetching reviews by spot ID:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
-  }
-});
-
 
 // Create a Review for a Spot based on the Spot's id
-router.post('/:spotId/reviews', restoreUser, async (req, res) => {
-  const { spotId } = req.params;
-  const { review, stars } = req.body;
-  const userId = req.user.id;
-
-  const errors = {};
-
-  // Validate request body
-  if (!review) errors.review = 'Review text is required';
-  if (!stars || stars < 1 || stars > 5) errors.stars = 'Stars must be an integer from 1 to 5';
-
-  if (Object.keys(errors).length > 0) {
-    return res.status(400).json({
-      message: 'Bad Request',
-      errors,
-    });
-  }
-
-  try {
-    // Check if the spot exists
-    const spot = await Spot.findByPk(spotId);
-
-    if (!spot) {
-      return res.status(404).json({ message: "Spot couldn't be found" });
-    }
-
-    // Check if the user already has a review for this spot
-    const existingReview = await Review.findOne({
-      where: {
-        userId,
-        spotId,
-      },
-    });
-
-    if (existingReview) {
-      return res.status(500).json({
-        message: 'User already has a review for this spot',
-      });
-    }
-
-    // Create the review
-    const newReview = await Review.create({
-      userId,
-      spotId,
-      review,
-      stars,
-    });
-
-    // Respond with the newly created review
-    return res.status(201).json(newReview);
-  } catch (error) {
-    console.error('Error creating review:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
-  }
-});
-
-// Create a Review for a Spot based on the Spot's id
-router.post('/:spotId/reviews', restoreUser, async (req, res) => {
+router.post('/:spotId/reviews', requireAuth, async (req, res) => {
   const { spotId } = req.params;
   const { review, stars } = req.body;
   const userId = req.user.id;
@@ -239,7 +147,7 @@ router.post('/:spotId/reviews', restoreUser, async (req, res) => {
 
 
 // Add an Image to a Review based on the Review's id
-router.post('/:id/reviewImages', restoreUser, async (req, res) => {
+router.post('/:id/images', requireAuth, async (req, res) => {
   const { id: reviewId } = req.params;
   const { url } = req.body;
 
@@ -268,13 +176,13 @@ router.post('/:id/reviewImages', restoreUser, async (req, res) => {
     // Create the review image
     const newReviewImage = await ReviewImage.create({
       reviewId,
-      url,
+      imageURL: url,
     });
 
     // Respond with the newly created review image
     return res.status(201).json({
       id: newReviewImage.id,
-      url: newReviewImage.url,
+      url: newReviewImage.imageURL,
     });
   } catch (error) {
     console.error('Error adding image to review:', error);
@@ -283,7 +191,7 @@ router.post('/:id/reviewImages', restoreUser, async (req, res) => {
 });
 
 // Edit a Review
-router.put('/:id', restoreUser, async (req, res) => {
+router.put('/:id', requireAuth, async (req, res) => {
   const { id: reviewId } = req.params;
   const { review, stars } = req.body;
 
@@ -326,7 +234,7 @@ router.put('/:id', restoreUser, async (req, res) => {
 
 
 // Delete a Review
-router.delete('/:id', restoreUser, async (req, res) => {
+router.delete('/:id', requireAuth, async (req, res) => {
   const { id: reviewId } = req.params;
 
   try {
@@ -355,7 +263,7 @@ router.delete('/:id', restoreUser, async (req, res) => {
 
 
 // Create a Booking from a Spot based on the Spot's id
-router.post('/spots/:spotId/bookings', restoreUser, async (req, res) => {
+router.post('/spots/:spotId/bookings', requireAuth, async (req, res) => {
   const { spotId } = req.params;
   const { startDate, endDate } = req.body;
   const userId = req.user.id;

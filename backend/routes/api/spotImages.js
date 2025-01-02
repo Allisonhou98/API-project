@@ -1,10 +1,10 @@
 const express = require('express');
 const { SpotImage, Spot } = require('../../db/models'); // Adjust the path based on your project structure
-const { restoreUser } = require('../../utils/auth'); // Middleware for authentication
+const { requireAuth } = require('../../utils/auth'); // Middleware for authentication
 const router = express.Router();
 
 // Delete a Spot Image
-router.delete('/:imageId', restoreUser, async (req, res) => {
+router.delete('/:imageId', requireAuth, async (req, res) => {
   const { imageId } = req.params;
 
   try {

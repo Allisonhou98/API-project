@@ -1,10 +1,10 @@
 const express = require('express');
 const { Booking, Spot, SpotImage } = require('../../db/models'); // Adjust the path based on your project structure
-const { restoreUser } = require('../../utils/auth'); // Middleware for authentication
+const { requireAuth } = require('../../utils/auth'); // Middleware for authentication
 const router = express.Router();
 
 // Get all of the Current User's Bookings
-router.get('/session/bookings', restoreUser, async (req, res) => {
+router.get('/current', requireAuth, async (req, res) => {
   const userId = req.user.id;
 
   try {
@@ -75,7 +75,7 @@ router.get('/session/bookings', restoreUser, async (req, res) => {
 });
 
 // Get all Bookings for a Spot based on the Spot's id
-router.get('/spots/:spotId/bookings', restoreUser, async (req, res) => {
+router.get('/spots/:spotId/bookings', requireAuth, async (req, res) => {
     const { spotId } = req.params;
   
     try {
@@ -130,7 +130,7 @@ router.get('/spots/:spotId/bookings', restoreUser, async (req, res) => {
   });
 
   // Edit a Booking
-router.put('/:id', restoreUser, async (req, res) => {
+router.put('/:id', requireAuth, async (req, res) => {
     const { id: bookingId } = req.params;
     const { startDate, endDate } = req.body;
   
@@ -219,7 +219,7 @@ router.put('/:id', restoreUser, async (req, res) => {
 
   
   // Delete a Booking
-router.delete('/:id', restoreUser, async (req, res) => {
+router.delete('/:id', requireAuth, async (req, res) => {
     const { id: bookingId } = req.params;
   
     try {

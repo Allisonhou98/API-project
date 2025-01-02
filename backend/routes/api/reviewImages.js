@@ -1,10 +1,10 @@
 const express = require('express');
 const { ReviewImage, Review } = require('../../db/models'); // Adjust the path based on your project structure
-const { restoreUser } = require('../../utils/auth'); // Middleware for authentication
+const { requireAuth } = require('../../utils/auth'); // Middleware for authentication
 const router = express.Router();
 
 // Delete a Review Image
-router.delete('/:reviewId', restoreUser, async (req, res) => {
+router.delete('/:reviewId', requireAuth, async (req, res) => {
   const { reviewId } = req.params;
 
   try {

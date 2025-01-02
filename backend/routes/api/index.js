@@ -28,8 +28,8 @@ router.post('/test', (req, res) => {
 router.use('/spots', spotsRouter);
 router.use('/reviews', reviewsRouter);
 router.use('/bookings', bookingsRouter);
-router.use('/spotImages', spotImagesRouter);
-router.use('/reviewImages', reviewImagesRouter);
+router.use('/spot-images', spotImagesRouter);
+router.use('/review-images', reviewImagesRouter);
 
 // fix
 module.exports = router;
