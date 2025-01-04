@@ -2,11 +2,12 @@
 
 ## Database Schema Design
 
-`<insert database schema design here>`
-
 ![db-schema]
 
 [db-schema]: ./images/db-schema.png
+
+## Render URL
+https://api-project-8gsw.onrender.com/api
 
 ## API Documentation
 
@@ -277,7 +278,7 @@ Returns all the spots owned (created) by the current user.
 * Require Authentication: true
 * Request
   * Method: GET
-  * Route path: /api/session/spots
+  * Route path: /api/spots/current
   * Body: none
 
 * Successful Response
@@ -624,7 +625,7 @@ Returns all the reviews written by the current user.
 * Require Authentication: true
 * Request
   * Method: GET
-  * Route path: /api/session/reviews
+  * Route path: /api/reviews/current
   * Body: none
 
 * Successful Response
@@ -972,7 +973,7 @@ Return all the bookings that the current user has made.
 * Require Authentication: true
 * Request
   * Method: GET
-  * Route path: /api/session/bookings
+  * Route path: /api/bookings/current
   * Body: none
 
 * Successful Response
